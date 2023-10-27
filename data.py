@@ -13,23 +13,9 @@ import cv2
 # create dataset class
 class knifeDataset(Dataset):
     def __init__(self,images_df,mode="train"):
-        # Pre-filter the dataframe to only include valid images
-        valid_indices = []
-        for idx, row in images_df.iterrows():
-            filename = str(row.Id)
-            im = cv2.imread(filename)
-            if im is not None:
-                valid_indices.append(idx)
-
-        # Update the dataframe to only include valid rows
-        self.images_df = images_df.iloc[valid_indices].copy()
+        self.images_df = images_df.copy()
+        self.images_df.Id = self.images_df.Id
         self.mode = mode
-        
-    def get_class_sample_counts(self):
-        return self.images_df['Label'].value_counts().sort_index().values
-
-
-
 
     def __len__(self):
         return len(self.images_df)
