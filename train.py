@@ -97,6 +97,11 @@ def map_accuracy(probs, truth, k=5):
 train_imlist = pd.read_csv("train.csv")
 train_gen = knifeDataset(train_imlist,mode="train")
 train_loader = DataLoader(train_gen,batch_size=config.batch_size,shuffle=True,pin_memory=True,num_workers=8)
+
+class_sample_counts = train_gen.get_class_sample_counts()
+weights = 1. / torch.tensor(class_sample_counts, dtype=torch.float)
+weights = weights / weights.sum()
+class_weights = weights.cuda()
 val_imlist = pd.read_csv("test.csv")
 val_gen = knifeDataset(val_imlist,mode="val")
 val_loader = DataLoader(val_gen,batch_size=config.batch_size,shuffle=False,pin_memory=True,num_workers=8)
@@ -107,9 +112,9 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
 ############################# Parameters #################################
-optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
+optimizer = optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=1e-4)
 scheduler = lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=config.epochs * len(train_loader), eta_min=0,last_epoch=-1)
-criterion = nn.CrossEntropyLoss().cuda()
+criterion = nn.CrossEntropyLoss(weight=class_weights).cuda()
 
 ############################# Training #################################
 start_epoch = 0
