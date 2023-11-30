@@ -22,7 +22,18 @@ class knifeDataset(Dataset):
 
         self.images_df = images_df.iloc[valid_indices].copy()
         self.mode = mode
+    def edge_detection(self, image, method='sobel'):
+        # 使用Sobel或Canny算子进行边缘检测
+        if method.lower() == 'sobel':
+            sobelx = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)
+            sobely = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3)
+            edge_image = np.sqrt(sobelx**2 + sobely**2)
+        elif method.lower() == 'canny':
+            edge_image = cv2.Canny(image, 100, 200)
+        else:
+            raise ValueError("Unsupported method: Choose 'sobel' or 'canny'")
 
+        return edge_image
     def __len__(self):
         return len(self.images_df)
 
@@ -36,6 +47,16 @@ class knifeDataset(Dataset):
 
         if self.mode == "train":
             # 训练模式的转换
+            # 对原始图像应用边缘检测
+            edge_X = self.edge_detection(X, method='sobel')
+            
+            # 确保边缘图像是uint8类型
+            edge_X = np.uint8(edge_X)
+            if edge_X.ndim == 2:
+                # 如果是单通道图像，转换为三通道
+                edge_X = cv2.cvtColor(edge_X, cv2.COLOR_GRAY2RGB)
+
+            edge_X = Image.fromarray(edge_X)          
             X = T.Compose([T.ToPILImage(),
                     T.Resize((config.img_weight, config.img_height)),
                     T.ColorJitter(brightness=0.2, contrast=0, saturation=0, hue=0),
@@ -57,6 +78,9 @@ class knifeDataset(Dataset):
         filename = str(row.Id)
         im = cv2.imread(filename)[:, :, ::-1]
         return im, filename
+
+
+
 
 
 
